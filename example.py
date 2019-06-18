@@ -14,21 +14,25 @@ from core.probabilitybuckets_light import ProbabilityBuckets
 
 # Parameters
 scale = 20
-n = 4 * (scale ** 2)
+
+n = (4/4) * (scale ** 2)
 compositions = 2 ** 7
 
 # Derived & Helper Variables
 truncation_at = 2500
 number_of_events = int(2 * truncation_at + 1)
-events = np.linspace(-truncation_at, truncation_at, number_of_events, endpoint=True)
-x_axis = np.linspace(-truncation_at, truncation_at + 1, number_of_events + 1, endpoint=True)
+events = np.arange(-truncation_at, truncation_at + 1, 1)
+x_axis = np.arange(-truncation_at, truncation_at + 2, 1)
 
-# Binomial Noise
+# Binomial Noise (scaled)
 binA = np.zeros(x_axis.size)
 binB = np.zeros(x_axis.size)
 for k in range(0, x_axis.size):
-    binA[k] = binom.pmf(x_axis[k], n, 0.5, -n/2)
-    binB[k] = binom.pmf(x_axis[k-1], n, 0.5, -n/2)
+    binA[k] = 0.5 * binom.pmf(x_axis[k]/2, n, 0.5, -n/2)
+    binB[k] = 0.5 *  binom.pmf(x_axis[(k-1)]/2, n, 0.5, -n/2)
+
+binA = binA/np.sum(binA)
+binB = binB/np.sum(binB)
 
 
 # Clamped Binomial noise
@@ -65,6 +69,21 @@ plt.plot(x_axis, binB, label='Binomial B')
 plt.title("Input distributions")
 plt.xlabel("Noise")
 plt.ylabel("mass")
+plt.legend()
+plt.show()
+
+# Show input distributions restricted to interesting part
+plt.plot(x_axis, gaussA, label='Gauss A')
+plt.plot(x_axis, gaussB, label='Gauss B')
+plt.plot(x_axis, binA, label='Binomial A')
+plt.plot(x_axis, binB, label='Binomial B')
+# plt.plot(x_axis, truncatedBinA, label='Truncated Binomial A')
+# plt.plot(x_axis, truncatedBinB, label='Truncated Binomial B')
+
+plt.title("Input distributions (near mean)")
+plt.xlabel("Noise")
+plt.ylabel("mass")
+plt.xlim(-2*scale, 2*scale)
 plt.legend()
 plt.show()
 
