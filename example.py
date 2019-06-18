@@ -14,8 +14,9 @@ from core.probabilitybuckets_light import ProbabilityBuckets
 
 # Parameters
 scale = 20
+approx_factor = 2
 
-n = (4/4) * (scale ** 2)
+n =  int((4.0/(2.0**2)) * (scale ** 2))
 compositions = 2 ** 7
 
 # Derived & Helper Variables
@@ -28,8 +29,8 @@ x_axis = np.arange(-truncation_at, truncation_at + 2, 1)
 binA = np.zeros(x_axis.size)
 binB = np.zeros(x_axis.size)
 for k in range(0, x_axis.size):
-    binA[k] = binom.pmf(x_axis[k]/2, n, 0.5, -n/2)
-    binB[k] = binom.pmf(x_axis[(k-1)]/2, n, 0.5, -n/2)
+    binA[k] = binom.pmf(x_axis[k]/approx_factor, n, 0.5, -n/2)
+    binB[k] = binom.pmf(x_axis[(k-1)]/approx_factor, n, 0.5, -n/2)
 
 binA = binA/np.sum(binA)
 binB = binB/np.sum(binB)
