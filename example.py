@@ -28,8 +28,8 @@ x_axis = np.arange(-truncation_at, truncation_at + 2, 1)
 binA = np.zeros(x_axis.size)
 binB = np.zeros(x_axis.size)
 for k in range(0, x_axis.size):
-    binA[k] = 0.5 * binom.pmf(x_axis[k]/2, n, 0.5, -n/2)
-    binB[k] = 0.5 *  binom.pmf(x_axis[(k-1)]/2, n, 0.5, -n/2)
+    binA[k] = binom.pmf(x_axis[k]/2, n, 0.5, -n/2)
+    binB[k] = binom.pmf(x_axis[(k-1)]/2, n, 0.5, -n/2)
 
 binA = binA/np.sum(binA)
 binB = binB/np.sum(binB)
@@ -93,7 +93,7 @@ privacybucketsG = ProbabilityBuckets(
         factor = 1 + 1e-4,   # depends on the number_of_buckets and is the multiplicative constant between two buckets.
         dist1_array = gaussA,  # distribution A
         dist2_array = gaussB,  # distribution B
-        caching_directory = "./pb-cache",  # caching makes re-evaluations faster. Can be turned off for some cases.
+        caching_directory = "./pb-cacheGauss",  # caching makes re-evaluations faster. Can be turned off for some cases.
         free_infty_budget=10**(-20),  # how much we can put in the infty bucket before first squaring
         error_correction=True,  # error correction. See publication for details
         )
@@ -111,7 +111,7 @@ privacybucketsB = ProbabilityBuckets(
         factor = 1 + 1e-4,   # depends on the number_of_buckets and is the multiplicative constant between two buckets.
         dist1_array =  binA,  # distribution A
         dist2_array = binB,  # distribution B
-        caching_directory = "./pb-cache",  # caching makes re-evaluations faster. Can be turned off for some cases.
+        caching_directory = "./pb-cacheBinom",  # caching makes re-evaluations faster. Can be turned off for some cases.
         free_infty_budget=10**(-20),  # how much we can put in the infty bucket before first squaring
         error_correction=True,  # error correction. See publication for details
         )
