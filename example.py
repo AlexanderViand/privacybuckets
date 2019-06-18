@@ -16,7 +16,7 @@ from core.probabilitybuckets_light import ProbabilityBuckets
 scale = 20
 approx_factor = 2
 
-n =  int((4.0/(2.0**2)) * (scale ** 2))
+n =  int((4.0/(approx_factor**2)) * (scale ** 2))
 compositions = 2 ** 7
 
 # Derived & Helper Variables
