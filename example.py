@@ -13,8 +13,8 @@ from core.probabilitybuckets_light import ProbabilityBuckets
 
 
 # Parameters
-scale = 20
-approx_factor = 2
+scale = 150
+approx_factor = 4
 
 n =  int((4.0/(approx_factor**2)) * (scale ** 2))
 compositions = 2 ** 7
