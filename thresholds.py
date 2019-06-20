@@ -276,3 +276,7 @@ plt.xlim(0.5, 2.5)
 plt.ticklabel_format(useOffset=False)  # Hotfix for the behaviour of my current matplotlib version
 plt.savefig("delta-eps.pdf")
 plt.show()
+
+
+# Save the csv so we can do the plotting seperately:
+np.savetxt("delta-eps.csv", np.transpose([eps_vector, upper_boundG, upper_boundB2, upper_boundB3, upper_boundB4]), delimiter=',')
