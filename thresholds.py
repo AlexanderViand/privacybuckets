@@ -247,31 +247,32 @@ lower_boundB3 = [privacybuckets_composedB3.delta_of_eps_lower_bound(eps) for eps
 upper_boundB4 = [privacybuckets_composedB4.delta_of_eps_upper_bound(eps) for eps in eps_vector]
 lower_boundB4 = [privacybuckets_composedB4.delta_of_eps_lower_bound(eps) for eps in eps_vector]
 
-plt.plot(eps_vector, upper_boundG, '-b', label="GaussianNoise (or f=1, n={:d})".format(n1))
+plt.plot(eps_vector, upper_boundG, '-k', label=r'$\mathcal{{N}}(0,{{{:d}}}^2) \approx \mathcal{{B}}({{{:d}}}, \frac{{1}}{{2}})$'.format(scale, n1))
 pointG = np.abs(np.array(upper_boundG) - delta_point).argmin()
-plt.text(eps_vector[pointG], 1.1 * delta_point, "e ={:f}".format(eps_vector[pointG]))
+plt.text(eps_vector[pointG], 1.1 * delta_point, "$\epsilon$ ={:.2f}".format(eps_vector[pointG]))
 # plt.plot(eps_vector, lower_boundG, label="lower_bound G")
 
-plt.plot(eps_vector, upper_boundB2, '--g', label="Binomial Noise (f=2, n={:d})".format(n2))
+plt.plot(eps_vector, upper_boundB2, '--k', label=r'$2 \cdot \mathcal{{B}}({{{:d}}}, \frac{{1}}{{2}})$'.format(n2))
 pointB2 = np.abs(np.array(upper_boundB2) - delta_point).argmin()
-plt.text(eps_vector[pointB2], 0.9 * delta_point, "e ={:f}".format(eps_vector[pointB2]))
+#plt.text(eps_vector[pointB2], 0.9 * delta_point, "$\epsilon$ ={:.2f}".format(eps_vector[pointB2]))
 
-plt.plot(eps_vector, upper_boundB3, '--r', label="Binomial Noise (f=3, n={:d})".format(n3))
+plt.plot(eps_vector, upper_boundB3, ':k', label=r'$3 \cdot \mathcal{{B}}({{{:d}}}, \frac{{1}}{{2}})$'.format(n3))
 pointB3 = np.abs(np.array(upper_boundB3) - delta_point).argmin()
-plt.text(eps_vector[pointB3], 0.8 * delta_point, "e ={:f}".format(eps_vector[pointB3]))
+#plt.text(eps_vector[pointB3], 0.8 * delta_point, "$\epsilon$ ={:.2f}".format(eps_vector[pointB3]))
 
-plt.plot(eps_vector, upper_boundB4, '--y', label="Binomial Noise (f=4, n={:d})".format(n4))
+plt.plot(eps_vector, upper_boundB4, '-.k', label=r'$4 \cdot \mathcal{{B}}({{{:d}}}, \frac{{1}}{{2}})$'.format(n4))
 pointB4 = np.abs(np.array(upper_boundB4) - delta_point).argmin()
-plt.text(eps_vector[pointB4], 0.7 * delta_point, "e ={:f}".format(eps_vector[pointB4]))
+plt.text(eps_vector[pointB4]+0.05, 1.1 * delta_point, "$\epsilon$ ={:.2f}".format(eps_vector[pointB4]))
 
 # plt.plot(eps_vector, lower_boundB, label="lower_bound B")
 plt.legend()
-plt.title("Mechanisms with scale sigma ={:d} after {:d} compositions".format(scale, compositions))
+#plt.title("Mechanisms with scale sigma ={:d} after {:d} compositions".format(scale, compositions))
 plt.xlabel("eps")
 plt.ylabel("delta")
-plt.axes().axhline(y=delta_point)
-plt.ylim(0, 2 * 10 ** -5)
+plt.axes().axhline(y=delta_point, color='black')
+plt.ylim(0, 1.5 * 10 ** -5)
 plt.xlim(0.5, 2.5)
 # plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0), useOffset=False, useMathText=True)
 plt.ticklabel_format(useOffset=False)  # Hotfix for the behaviour of my current matplotlib version
+plt.savefig("delta-eps.pdf")
 plt.show()
