@@ -78,4 +78,4 @@ def delta_eps_plot(plot_name, filename):
 
 
 
-delta_eps_plot("../delta-eps.pdf", "delta-eps.csv")
+delta_eps_plot("delta-eps.pdf", "delta-eps.csv")
