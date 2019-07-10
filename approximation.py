@@ -103,17 +103,13 @@ def main():
     events = np.arange(-truncation_at, truncation_at + 1, 1)
 
     # Define distributions
-    gauss_a, gauss_b = gaussian_noise(events, scale, offset=offset)
-    bin2_a, bin2_b = binomial_noise(events, n, offset=offset, scaling_factor=2)
-    bin3_a, bin3_b = binomial_noise(events, n, offset=offset, scaling_factor=3)
-    bin4_a, bin4_b = binomial_noise(events, n, offset=offset, scaling_factor=4)
+    bin_a, bin_b = binomial_noise(events, n / 16, offset=offset, scaling_factor=1)
+    bin_scaled_a, bin_scaled_b = binomial_noise(events, n, offset=offset, scaling_factor=4)
 
     # Show input distributions
-    input_curves = (gauss_a, gauss_b, bin2_a, bin2_b, bin3_a, bin3_b, bin4_a, bin4_b)
-    input_labels = (
-        'Gauss A', 'Gauss B', 'Binomial (s=2) A', 'Binomial (s=2) B', 'Binomial (s=3) A', 'Binomial (s=3) B',
-        'Binomial (s=4) A', 'Binomial (s=4) B'
-    )
+    input_curves = (bin_a, bin_b, bin_scaled_a, bin_scaled_b)
+    input_labels = ("Binomial A", "Binomial B", "Binomial (scaled) A", "Binomial (scaled) B"
+                    )
     plot(events, input_curves, input_labels, title="Input distributions", xlabel="Noise", ylabel="mass")
 
     # Show input distributions restricted to interesting part
@@ -121,42 +117,29 @@ def main():
          xlim=(-2 * scale, 2 * scale))
 
     # Run Privacy Buckets
-    composed_gauss = compose(gauss_a, gauss_b, compositions=compositions)
-    composed_bin2 = compose(bin2_a, bin2_b, compositions=compositions)
-    composed_bin3 = compose(bin3_a, bin3_b, compositions=compositions)
-    composed_bin4 = compose(bin4_a, bin4_b, compositions=compositions)
+    composed_bin = compose(bin_a, bin_b, compositions=compositions)
+    composed_bin_scaled = compose(bin_scaled_a, bin_scaled_b, compositions=compositions)
 
     # abusing internals, we can look at the bucket distribution
-    composed_curves = (composed_gauss.bucket_distribution, composed_bin2.bucket_distribution,
-                       composed_bin3.bucket_distribution, composed_bin4.bucket_distribution)
-    composed_labels = (
-        'bucket distribution Gauss', 'bucket distribution Binomial (s=2)', 'bucket distribution Binomial (s=3)',
-        'bucket distribution Binomial (s=4)'
-    )
+    composed_curves = (composed_bin.bucket_distribution, composed_bin_scaled.bucket_distribution)
+    composed_labels = ('bucket distribution Binomial', 'bucket distribution Binomial (scaled)')
     plot_multiple(composed_curves, composed_labels, "Bucket Distributions", "bucket number", "mass")
 
     # Now we build the delta(eps) graphs from the computed distribution
-    upper_bound_gauss = [composed_gauss.delta_of_eps_upper_bound(eps) for eps in eps_vector]
-    lower_bound_gauss = [composed_gauss.delta_of_eps_lower_bound(eps) for eps in eps_vector]
-    upper_bound_bin2 = [composed_bin2.delta_of_eps_upper_bound(eps) for eps in eps_vector]
-    lower_bound_bin2 = [composed_bin2.delta_of_eps_lower_bound(eps) for eps in eps_vector]
-    upper_bound_bin3 = [composed_bin3.delta_of_eps_upper_bound(eps) for eps in eps_vector]
-    lower_bound_bin3 = [composed_bin3.delta_of_eps_lower_bound(eps) for eps in eps_vector]
-    upper_bound_bin4 = [composed_bin4.delta_of_eps_upper_bound(eps) for eps in eps_vector]
-    lower_bound_bin4 = [composed_bin4.delta_of_eps_lower_bound(eps) for eps in eps_vector]
+    upper_bound_bin = [composed_bin.delta_of_eps_upper_bound(eps) for eps in eps_vector]
+    lower_bound_bin = [composed_bin.delta_of_eps_lower_bound(eps) for eps in eps_vector]
+    upper_bound_bin_scaled = [composed_bin_scaled.delta_of_eps_upper_bound(eps) for eps in eps_vector]
+    lower_bound_bin_scaled = [composed_bin_scaled.delta_of_eps_lower_bound(eps) for eps in eps_vector]
 
     # Show all curves
-    delta_eps_curves = (
-        upper_bound_gauss, lower_bound_gauss, upper_bound_bin2, lower_bound_bin2, upper_bound_bin3, lower_bound_bin3,
-        upper_bound_bin4, lower_bound_bin4
-    )
-    labels = ("Gauss (u)", "Gauss (l)", "Bin2 (u)", "Bin2 (l)", "Bin3 (u)", "Bin3 (l)", "Bin4 (u)", "Bin4 (l)")
-    plot(eps_vector, delta_eps_curves, labels, xlim=(0.5, 2.0), ylim=(0, 10 ** -5))
+    delta_eps_curves = (upper_bound_bin, lower_bound_bin, upper_bound_bin_scaled, lower_bound_bin_scaled)
+    labels = ("Bin (u)", "Bin (l)", "Bin scaled (u)", "Bin scaled (l)")
+    plot(eps_vector, delta_eps_curves, labels)  # , xlim=(0.5, 2.0), ylim=(0, 10 ** -5))
 
     # Save to csv so we can do the plotting separately
-    np.savetxt("delta-eps.csv",
-               np.transpose([eps_vector, upper_bound_gauss, upper_bound_bin2, upper_bound_bin3, upper_bound_bin4]),
-               delimiter=',')
+    # np.savetxt("delta-eps_approximations.csv",
+    #            np.transpose([eps_vector, upper_bound_gauss, upper_bound_bin2, upper_bound_bin3, upper_bound_bin4]),
+    #            delimiter=',')
 
 
 if __name__ == "__main__":
