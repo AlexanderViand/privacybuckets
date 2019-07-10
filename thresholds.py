@@ -1,5 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
+import matplotlib as mpl
 from scipy.stats import binom, norm
 
 from core.probabilitybuckets_light import ProbabilityBuckets
@@ -60,6 +61,7 @@ def compose(distribution_a, distribution_b, compositions=1):
 
 
 def plot(events, curves, labels, title='', xlabel='', ylabel='', xlim=None, ylim=None):
+    mpl.rcParams['figure.dpi'] = 300
     b = True
     for c, l in zip(curves, labels):
         b = not b
@@ -79,6 +81,7 @@ def plot(events, curves, labels, title='', xlabel='', ylabel='', xlim=None, ylim
 
 
 def plot_multiple(events_and_curve, labels, title='', xlabel='', ylabel='', xlim=None, ylim=None):
+    mpl.rcParams['figure.dpi'] = 300
     for p, l in zip(events_and_curve, labels):
         plt.plot(p, label=l)
         plt.title(title)
@@ -96,7 +99,7 @@ def main():
     # Parameters
     scale = 150
     n = 4 * (scale ** 2)  # approximate Gaussian
-    offset = 1
+    offset = 2
     compositions = 640
     eps_vector = np.linspace(0, 3, 100)
     truncation_at = 2500
