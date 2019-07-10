@@ -44,7 +44,7 @@ def gaussian_noise(events, scale, offset=1):
 def compose(distribution_a, distribution_b, compositions=1):
     privacybuckets = ProbabilityBuckets(
         number_of_buckets=100000,  # number of buckets. The more the better as the resolution gets more finegraind
-        factor=1 + 1e-4,  # depends on the number_of_buckets and is the multiplicative constant between two buckets.
+        factor=1 + 1e-5,  # depends on the number_of_buckets and is the multiplicative constant between two buckets.
         dist1_array=distribution_a,  # distribution A
         dist2_array=distribution_b,  # distribution B
         caching_directory="./pb-cache",  # caching makes re-evaluations faster. Can be turned off for some cases.
@@ -60,8 +60,13 @@ def compose(distribution_a, distribution_b, compositions=1):
 
 
 def plot(events, curves, labels, title='', xlabel='', ylabel='', xlim=None, ylim=None):
+    b = True
     for c, l in zip(curves, labels):
-        plt.plot(events, c, label=l)
+        b = not b
+        if b:
+            plt.plot(events, c, label=l, linestyle="--")
+        else:
+            plt.plot(events, c, label=l)
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
@@ -88,7 +93,6 @@ def plot_multiple(events_and_curve, labels, title='', xlabel='', ylabel='', xlim
 
 
 def main():
-
     # Parameters
     scale = 150
     n = 4 * (scale ** 2)  # approximate Gaussian
@@ -107,8 +111,8 @@ def main():
     # Show input distributions
     input_curves = (gauss_a, gauss_b, bin2_a, bin2_b, bin3_a, bin3_b, bin4_a, bin4_b)
     input_labels = (
-        'Gauss A', 'Gauss B', 'Binomial A (f=2)', 'Binomial B (f=2)', 'Binomial A (f=3)', 'Binomial B (f=3)',
-        'Binomial A (f=4)', 'Binomial B (f=4)'
+        'Gauss A', 'Gauss B', 'Binomial (s=2) A', 'Binomial (s=2) B', 'Binomial (s=3) A', 'Binomial (s=3) B',
+        'Binomial (s=4) A', 'Binomial (s=4) B'
     )
     plot(events, input_curves, input_labels, title="Input distributions", xlabel="Noise", ylabel="mass")
 
@@ -141,8 +145,17 @@ def main():
     upper_bound_bin4 = [composed_bin4.delta_of_eps_upper_bound(eps) for eps in eps_vector]
     lower_bound_bin4 = [composed_bin4.delta_of_eps_lower_bound(eps) for eps in eps_vector]
 
-    # Save to csv so we can do the plotting seperately:
-    np.savetxt("delta-eps.csv", np.transpose([eps_vector, upper_bound_gauss, upper_bound_bin2, upper_bound_bin3, upper_bound_bin4]),
+    # Show all curves
+    delta_eps_curves = (
+        upper_bound_gauss, lower_bound_gauss, upper_bound_bin2, lower_bound_bin2, upper_bound_bin3, lower_bound_bin3,
+        upper_bound_bin4, lower_bound_bin4
+    )
+    labels = ("Gauss (u)", "Gauss (l)", "Bin2 (u)", "Bin2 (l)", "Bin3 (u)", "Bin3 (l)", "Bin4 (u)", "Bin4 (l)")
+    plot(eps_vector, delta_eps_curves, labels, xlim=(0.5, 2.0), ylim=(0, 10 ** -5))
+
+    # Save to csv so we can do the plotting separately
+    np.savetxt("delta-eps.csv",
+               np.transpose([eps_vector, upper_bound_gauss, upper_bound_bin2, upper_bound_bin3, upper_bound_bin4]),
                delimiter=',')
 
 
