@@ -1,6 +1,7 @@
 import numpy as np
-from matplotlib import pyplot as plt
 import matplotlib as mpl
+mpl.use('Qt5Agg')
+from matplotlib import pyplot as plt
 from scipy.stats import binom, norm
 
 from core.probabilitybuckets_light import ProbabilityBuckets
