@@ -317,7 +317,7 @@ class ProbabilityBuckets:
 
         # excluding np arrays from dumping in "non_ndarray" without copying large arrays:
         save_dict = {}
-        for key in self.__dict__.keys():
+        for key in list(self.__dict__.keys()):
             if key not in excluded_attributes:
                 save_dict[key] = self.__dict__[key]
 
@@ -344,7 +344,7 @@ class ProbabilityBuckets:
         # wich compositions do we need
         target_exp = int( np.log2(nr_of_compositions) )
         needed_compositions = [ x if (nr_of_compositions & (2**x) != 0) else -1 for x in range(target_exp + 1)]
-        needed_compositions = list(filter(lambda a: a != -1, needed_compositions))
+        needed_compositions = list([a for a in needed_compositions if a != -1])
 
         self.logger.info("Needed compositions: " + ", ".join(map(str, needed_compositions)))
 

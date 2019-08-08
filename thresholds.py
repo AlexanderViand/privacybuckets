@@ -34,7 +34,7 @@ def gaussian_noise(events, scale, offset=1):
     gauss_a = norm.pdf(events, scale=scale)
     gauss_a /= np.sum(gauss_a)
 
-    events_b = map(lambda x: x - offset, events)
+    events_b = list(map(lambda x: x - offset, events))
     gauss_b = norm.pdf(events_b, scale=scale)
     gauss_b /= np.sum(gauss_b)
 
