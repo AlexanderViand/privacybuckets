@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib as mpl
+
 mpl.use('Qt5Agg')
 from matplotlib import pyplot as plt
 from scipy.stats import binom, norm
@@ -17,16 +18,15 @@ from core.probabilitybuckets_light import ProbabilityBuckets
 
 
 # Binomial Noise (scaled)
-def binomial_noise(events, n, offset=1, scaling_factor=1):
-    n_scaled = n / (scaling_factor ** 2)
+def binomial_noise(events, n, offset=1):
     binomial_a = np.zeros(events.size)
     binomial_b = np.zeros(events.size)
     for k in range(0, events.size):
-        binomial_a[k] = binom.pmf(events[k] / scaling_factor, n_scaled, 0.5, -n_scaled / 2)
-        binomial_b[k] = binom.pmf((events[k] - offset) / scaling_factor, n_scaled, 0.5, -n_scaled / 2)
-
-    binomial_a = binomial_a / np.sum(binomial_a)
-    binomial_b = binomial_b / np.sum(binomial_b)
+        binomial_a[k] = binom.pmf(events[k], n, 0.5, -n / 2)
+        binomial_b[k] = binom.pmf(events[k] - offset, n, 0.5, -n / 2)
+    # Should already be normalized, but just to make sure
+    #binomial_a = binomial_a / np.sum(binomial_a)
+    #binomial_b = binomial_b / np.sum(binomial_b)
     return binomial_a, binomial_b
 
 
@@ -108,15 +108,17 @@ def main():
 
     # Define distributions
     gauss_a, gauss_b = gaussian_noise(events, scale, offset=offset)
-    bin2_a, bin2_b = binomial_noise(events, n, offset=offset, scaling_factor=2)
-    bin3_a, bin3_b = binomial_noise(events, n, offset=offset, scaling_factor=3)
-    bin4_a, bin4_b = binomial_noise(events, n, offset=offset, scaling_factor=4)
+    bin_a, bin_b = binomial_noise(events, n, offset=offset)
+    bin2_a, bin2_b = binomial_noise(events, n / 4, offset=offset)
+    bin3_a, bin3_b = binomial_noise(events, n / 9, offset=offset)
+    bin4_a, bin4_b = binomial_noise(events, n / 16, offset=offset)
 
     # Show input distributions
-    input_curves = (gauss_a, gauss_b, bin2_a, bin2_b, bin3_a, bin3_b, bin4_a, bin4_b)
+    input_curves = (gauss_a, gauss_b, bin_a, bin_b, bin2_a, bin2_b, bin3_a, bin3_b, bin4_a, bin4_b)
     input_labels = (
-        'Gauss A', 'Gauss B', 'Binomial (s=2) A', 'Binomial (s=2) B', 'Binomial (s=3) A', 'Binomial (s=3) B',
-        'Binomial (s=4) A', 'Binomial (s=4) B'
+        'Gauss A', 'Gauss B', 'Binomial (n={}) A'.format(n), 'Binomial (n={}) B'.format(n),
+        'Binomial (n={}) A'.format(n / 4), 'Binomial (n={}) B'.format(n / 4), 'Binomial (n={}) A'.format(n / 9),
+        'Binomial (n={}) B'.format(n / 9), 'Binomial (n={}) A'.format(n / 16), 'Binomial (n={}) B'.format(n / 16)
     )
     plot(events, input_curves, input_labels, title="Input distributions", xlabel="Noise", ylabel="mass")
 
@@ -126,22 +128,28 @@ def main():
 
     # Run Privacy Buckets
     composed_gauss = compose(gauss_a, gauss_b, compositions=compositions)
+    composed_bin = compose(bin_a, bin_b, compositions=compositions)
     composed_bin2 = compose(bin2_a, bin2_b, compositions=compositions)
     composed_bin3 = compose(bin3_a, bin3_b, compositions=compositions)
     composed_bin4 = compose(bin4_a, bin4_b, compositions=compositions)
 
     # abusing internals, we can look at the bucket distribution
-    composed_curves = (composed_gauss.bucket_distribution, composed_bin2.bucket_distribution,
-                       composed_bin3.bucket_distribution, composed_bin4.bucket_distribution)
+    composed_curves = (
+
+        composed_gauss.bucket_distribution, composed_bin.bucket_distribution, composed_bin2.bucket_distribution,
+        composed_bin3.bucket_distribution, composed_bin4.bucket_distribution)
     composed_labels = (
-        'bucket distribution Gauss', 'bucket distribution Binomial (s=2)', 'bucket distribution Binomial (s=3)',
-        'bucket distribution Binomial (s=4)'
+        'bucket distribution Gauss (sigma={})'.format(scale), 'bucket distribution Binomial (n={})'.format(n),
+        'bucket distribution Binomial (n={})'.format(n / 4), 'bucket distribution Binomial (n={})'.format(n / 9),
+        'bucket distribution Binomial (n={})'.format(n / 16)
     )
     plot_multiple(composed_curves, composed_labels, "Bucket Distributions", "bucket number", "mass")
 
     # Now we build the delta(eps) graphs from the computed distribution
     upper_bound_gauss = [composed_gauss.delta_of_eps_upper_bound(eps) for eps in eps_vector]
     lower_bound_gauss = [composed_gauss.delta_of_eps_lower_bound(eps) for eps in eps_vector]
+    upper_bound_bin = [composed_bin.delta_of_eps_upper_bound(eps) for eps in eps_vector]
+    lower_bound_bin = [composed_bin.delta_of_eps_lower_bound(eps) for eps in eps_vector]
     upper_bound_bin2 = [composed_bin2.delta_of_eps_upper_bound(eps) for eps in eps_vector]
     lower_bound_bin2 = [composed_bin2.delta_of_eps_lower_bound(eps) for eps in eps_vector]
     upper_bound_bin3 = [composed_bin3.delta_of_eps_upper_bound(eps) for eps in eps_vector]
@@ -151,11 +159,15 @@ def main():
 
     # Show all curves
     delta_eps_curves = (
-        upper_bound_gauss, lower_bound_gauss, upper_bound_bin2, lower_bound_bin2, upper_bound_bin3, lower_bound_bin3,
-        upper_bound_bin4, lower_bound_bin4
+        upper_bound_gauss, lower_bound_gauss, upper_bound_bin, lower_bound_bin, upper_bound_bin2, lower_bound_bin2,
+        upper_bound_bin3, lower_bound_bin3, upper_bound_bin4, lower_bound_bin4
     )
-    labels = ("Gauss (u)", "Gauss (l)", "Bin2 (u)", "Bin2 (l)", "Bin3 (u)", "Bin3 (l)", "Bin4 (u)", "Bin4 (l)")
-    plot(eps_vector, delta_eps_curves, labels, xlim=(0.5, 2.0), ylim=(0, 10 ** -5))
+    labels = ('Gauss (sigma = {}) upper'.format(scale), 'Gauss (sigma = {}) lower'.format(scale),
+              'Binomial (n={}) upper'.format(n), 'Binomial (n={}) lower'.format(n),
+              'Binomial (n={}) upper'.format(n / 4), 'Binomial (n={}) lower'.format(n / 4),
+              'Binomial (n={}) upper'.format(n / 9), 'Binomial (n={}) lower'.format(n / 9),
+              'Binomial (n={}) upper'.format(n / 16), 'Binomial (n={}) lower'.format(n / 16))
+    plot(eps_vector, delta_eps_curves, labels, xlim=(0.5, 10.0), ylim=(0, 10 ** -5))
 
     # Save to csv so we can do the plotting separately
     np.savetxt("delta-eps.csv",
