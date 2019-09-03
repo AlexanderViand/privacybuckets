@@ -18,17 +18,15 @@ from core.probabilitybuckets_light import ProbabilityBuckets
 
 
 # Binomial Noise (scaled)
-def binomial_noise(n, offset=1):
-    n = round(n)
-    binomial_a = np.zeros(n + 1 + offset)
-    for k in range(0, n):
-        binomial_a[k] = binom.pmf(k, n, 0.5)
-    binomial_b = binomial_a
-    binomial_b = np.r_[np.zeros(offset), binomial_b[:-offset]]
-
+def binomial_noise(events, n, offset=1):
+    binomial_a = np.zeros(events.size)
+    binomial_b = np.zeros(events.size)
+    for k in range(0, events.size):
+        binomial_a[k] = binom.pmf(events[k], n, 0.5, -n / 2)
+        binomial_b[k] = binom.pmf(events[k] - offset, n, 0.5, -n / 2)
     # Should already be normalized, but just to make sure
-    # binomial_a = binomial_a / np.sum(binomial_a)
-    # binomial_b = binomial_b / np.sum(binomial_b)
+    #binomial_a = binomial_a / np.sum(binomial_a)
+    #binomial_b = binomial_b / np.sum(binomial_b)
     return binomial_a, binomial_b
 
 
@@ -105,30 +103,24 @@ def main():
     offset = 2
     compositions = 640
     eps_vector = np.linspace(0, 3, 100)
-
-
-    # Define distributions
     truncation_at = 2500
     events = np.arange(-truncation_at, truncation_at + 1, 1)
+
+    # Define distributions
     gauss_a, gauss_b = gaussian_noise(events, scale, offset=offset)
-    bin_a, bin_b = binomial_noise(n, offset=offset)
-    bin2_a, bin2_b = binomial_noise(n / 4, offset=offset)
-    bin3_a, bin3_b = binomial_noise(n / 9, offset=offset)
-    bin4_a, bin4_b = binomial_noise(n / 16, offset=offset)
+    bin_a, bin_b = binomial_noise(events, n, offset=offset)
+    bin2_a, bin2_b = binomial_noise(events, n / 4, offset=offset)
+    bin3_a, bin3_b = binomial_noise(events, n / 9, offset=offset)
+    bin4_a, bin4_b = binomial_noise(events, n / 16, offset=offset)
 
     # Show input distributions
-    input_curves = (bin_a, bin_b, bin2_a, bin2_b, bin3_a, bin3_b, bin4_a, bin4_b)
+    input_curves = (gauss_a, gauss_b, bin_a, bin_b, bin2_a, bin2_b, bin3_a, bin3_b, bin4_a, bin4_b)
     input_labels = (
-      'Binomial (n={}) A'.format(n), 'Binomial (n={}) B'.format(n),
+        'Gauss A', 'Gauss B', 'Binomial (n={}) A'.format(n), 'Binomial (n={}) B'.format(n),
         'Binomial (n={}) A'.format(n / 4), 'Binomial (n={}) B'.format(n / 4), 'Binomial (n={}) A'.format(n / 9),
         'Binomial (n={}) B'.format(n / 9), 'Binomial (n={}) A'.format(n / 16), 'Binomial (n={}) B'.format(n / 16)
     )
-    plot.hold(True)
-    plot(events, gauss_a, gauss_b, labels=('Gauss A', 'Gauss B'), title="Input distributions", xlabel="Noise", ylabel="mass")
-    plot(events, bin_a, gauss_b, labels=('Gauss A', 'Gauss B'), title="Input distributions", xlabel="Noise",
-         ylabel="mass")
-
-   plot.show()
+    plot(events, input_curves, input_labels, title="Input distributions", xlabel="Noise", ylabel="mass")
 
     # Show input distributions restricted to interesting part
     plot(events, input_curves, input_labels, title="Input distributions", xlabel="Noise", ylabel="mass",
