@@ -45,8 +45,8 @@ def gaussian_noise(events, scale, offset=1):
 # Run Privacy Buckets
 def compose(distribution_a, distribution_b, compositions=1):
     privacybuckets = ProbabilityBuckets(
-        number_of_buckets=100000,  # number of buckets. The more the better as the resolution gets more finegraind
-        factor=1 + 1e-7,  # depends on the number_of_buckets and is the multiplicative constant between two buckets.
+        number_of_buckets=300000,  # number of buckets. The more the better as the resolution gets more finegraind
+        factor=1 + 1e-3,  # depends on the number_of_buckets and is the multiplicative constant between two buckets.
         dist1_array=distribution_a,  # distribution A
         dist2_array=distribution_b,  # distribution B
         caching_directory="./pb-cache",  # caching makes re-evaluations faster. Can be turned off for some cases.
@@ -54,6 +54,7 @@ def compose(distribution_a, distribution_b, compositions=1):
         error_correction=True,  # error correction. See publication for details
     )
 
+    privacybuckets.print_state()
     # Now we evaluate how the distributon looks after 2**k independent compositions
     # input can be arbitrary positive integer, but exponents of 2 are numerically the most stable
     composed = privacybuckets.compose(compositions)
@@ -115,17 +116,13 @@ def main():
     scale = 150
     n = 4 * (scale ** 2)  # approximate Gaussian
     offset = 2
-    compositions = 640
+    compositions = 2
     eps_vector = np.linspace(0, 3, 100)
     truncation_at = 2500
     events = np.arange(-truncation_at, truncation_at + 1, 1)
 
     # Define distributions
-    gauss_a, gauss_b = gaussian_noise(events, scale, offset=offset)
-    bin_a, bin_b = binomial_noise(events, n, offset=offset)
-    bin2_a, bin2_b = binomial_noise(events, n / 4, offset=offset)
     bin3_a, bin3_b = binomial_noise(events, n / 9, offset=offset)
-    bin4_a, bin4_b = binomial_noise(events, n / 16, offset=offset)
 
     # Show input distributions
     input_curves = (bin3_a, bin3_b)
@@ -140,11 +137,7 @@ def main():
          xlim=(-2 * scale, 2 * scale))
 
     # Run Privacy Buckets
-    composed_gauss = compose(gauss_a, gauss_b, compositions=compositions)
-    composed_bin = compose(bin_a, bin_b, compositions=compositions)
-    composed_bin2 = compose(bin2_a, bin2_b, compositions=compositions)
     composed_bin3 = compose(bin3_a, bin3_b, compositions=compositions)
-    composed_bin4 = compose(bin4_a, bin4_b, compositions=compositions)
 
     # abusing internals, we can look at the bucket distribution
     plot_combined(composed_bin3.bucket_distribution, 'bucket dist')
@@ -161,12 +154,12 @@ def main():
     labels = (
               'Binomial (n={}) upper'.format(n / 9), 'Binomial (n={}) lower'.format(n / 9)
     )
-    plot(eps_vector, delta_eps_curves, labels, xlim=(0.5, 10.0), ylim=(0, 10 ** -5))
+    plot(eps_vector, delta_eps_curves, labels)
 
     # Save to csv so we can do the plotting separately
-    np.savetxt("delta-eps.csv",
-               np.transpose([eps_vector, upper_bound_gauss, upper_bound_bin2, upper_bound_bin3, upper_bound_bin4]),
-               delimiter=',')
+    # np.savetxt("delta-eps.csv",
+    #            np.transpose([eps_vector, upper_bound_gauss, upper_bound_bin2, upper_bound_bin3, upper_bound_bin4]),
+    #            delimiter=',')
 
 
 if __name__ == "__main__":

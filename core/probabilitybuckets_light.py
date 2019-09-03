@@ -17,15 +17,16 @@ import xxhash
 class ProbabilityBuckets:
 
     def __init__(self,
-                 number_of_buckets = 100000,
-                 factor = None,
-                 dist1_array = None,
-                 dist2_array = None,
-                 caching_directory = None,
-                 free_infty_budget = 10**(-20),
-                 logging_level = logging.INFO,
-                 error_correction = True,
-                 lazy_init = False,
+                 number_of_buckets=100000,
+                 factor=None,
+                 dist1_array=None,
+                 dist2_array=None,
+                 caching_directory=None,
+                 free_infty_budget=10 ** (-20),
+                 logging_level=logging.INFO,
+                 error_correction=True,
+                 lazy_init=False,
+                 skip_buckets=False,
                  **kwargs):
 
         self.logging_level = logging_level
@@ -36,10 +37,10 @@ class ProbabilityBuckets:
             return
 
         for key in kwargs:
-            self.logger.warning( "Warning: option {} not implemented".format(key) )
+            self.logger.warning("Warning: option {} not implemented".format(key))
 
         # infty_bucket is excluded
-        self.number_of_buckets = self.number_of_buckets = int(4 * (number_of_buckets // 4) ) + 1
+        self.number_of_buckets = self.number_of_buckets = int(4 * (number_of_buckets // 4)) + 1
         self.factor = np.float64(factor)
         self.log_factor = np.log(factor, dtype=np.float64)
 
@@ -47,7 +48,8 @@ class ProbabilityBuckets:
         self.squaring_threshold_factor = np.float64(1.1)
         self.free_infty_budget = np.float64(free_infty_budget)
 
-        self.create_bucket_distribution(dist1_array, dist2_array, error_correction)
+        if not skip_buckets:
+            self.create_bucket_distribution(dist1_array, dist2_array, error_correction)
 
         # setting up caching. Hashing beginning bucket_distribution to avoid name collisions
         self.caching_directory = caching_directory
@@ -61,14 +63,14 @@ class ProbabilityBuckets:
             self.logger.info("Caching directory: {}".format(self.caching_directory))
 
     def logger_setup(self, level):
-        self.logger = logging.getLogger(__name__)  # all instances use the same logger. Randomize the name if not appreciated
+        self.logger = logging.getLogger(
+            __name__)  # all instances use the same logger. Randomize the name if not appreciated
         if not len(self.logger.handlers):
             self.logger.setLevel(level=level)
             ch = logging.StreamHandler()
             ch.setLevel(level=level)
             ch.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s: %(message)s'))
             self.logger.addHandler(ch)
-
 
     def create_bucket_distribution(self, distr1, distr2, error_correction):
         self.logger.info("Create bucket distribution")
@@ -81,7 +83,8 @@ class ProbabilityBuckets:
         infty_mask = (distr2 == 0)
         null_mask = (distr1 == 0)
 
-        indices = np.ma.log(np.divide(distr1, distr2, where=~infty_mask))/self.log_factor + self.number_of_buckets//2
+        indices = np.ma.log(
+            np.divide(distr1, distr2, where=~infty_mask)) / self.log_factor + self.number_of_buckets // 2
         indices = np.ceil(indices).astype(int)
 
         # set up error correction
@@ -90,7 +93,7 @@ class ProbabilityBuckets:
 
         if self.error_correction:
             # we want errors(x,i) = P_B(x) - P_A(x) / f**i  =  P_B(x) - exp( log( P_A(x) ) - i * log_factor )
-            errors = distr2 - distr1 / self.factor**(indices - self.number_of_buckets//2)
+            errors = distr2 - distr1 / self.factor ** (indices - self.number_of_buckets // 2)
             # errors = distr2 - np.exp(np.ma.log(distr1, dtype=np.float64) - (indices - self.number_of_buckets//2)   * self.log_factor, dtype=np.float64)
         else:
             errors = np.zeros(len(distr1), dtype=np.float64)
@@ -128,20 +131,22 @@ class ProbabilityBuckets:
         self.logger.info("Squaring")
 
         # collapse puts every two consecutive buckets in a single bucket
-        collapse = lambda arr: np.sum(arr.reshape( len(arr) // 2, 2), axis=1)
+        collapse = lambda arr: np.sum(arr.reshape(len(arr) // 2, 2), axis=1)
 
         if self.error_correction:
             self.logger.debug("  Error correction.")
             # n_half_p1_to_n_half = [ -n/2+1, .. , n/2 ]
             # By adding self.one_index to this array, we get the corresponding self.bucket_distribution indices.
             # assumptions on next line: self.one_index % 2 == 1 and (self.number_of_buckets - 1) % 4 == 0
-            n_half_p1_to_n_half = np.arange(- (self.one_index//2) + 1, self.one_index // 2 + 1)
-            n_half_p1_to_n_half_addr = slice(n_half_p1_to_n_half[0] + self.one_index, n_half_p1_to_n_half[-1] + self.one_index + 1)
-            assert -n_half_p1_to_n_half[0] + 1 == n_half_p1_to_n_half[-1]   # sanity check. If failing: num_of_buckets invalid
+            n_half_p1_to_n_half = np.arange(- (self.one_index // 2) + 1, self.one_index // 2 + 1)
+            n_half_p1_to_n_half_addr = slice(n_half_p1_to_n_half[0] + self.one_index,
+                                             n_half_p1_to_n_half[-1] + self.one_index + 1)
+            assert -n_half_p1_to_n_half[0] + 1 == n_half_p1_to_n_half[
+                -1]  # sanity check. If failing: num_of_buckets invalid
 
             # div(i) = (1/f**(2i-1) - 1/f**(2i) )
-            div = lambda i: (1.0 / self.factor**( 2 * i - 1) ) - ( 1.0 / self.factor**( 2 * i ) )
-            div_arr = div( n_half_p1_to_n_half )
+            div = lambda i: (1.0 / self.factor ** (2 * i - 1)) - (1.0 / self.factor ** (2 * i))
+            div_arr = div(n_half_p1_to_n_half)
 
             def square_error(array):
                 temp_error = np.zeros(self.number_of_buckets, dtype=np.float64)
@@ -149,7 +154,8 @@ class ProbabilityBuckets:
                 temp_error[n_half_p1_to_n_half_addr] = collapse(array[1:])
 
                 # here we add B(i) * (1/f**(2i-1) - 1/f**(2i) ) for every i in [-n/2+1, n/2]
-                temp_error[n_half_p1_to_n_half_addr] += self.bucket_distribution[ (n_half_p1_to_n_half * 2) - 1 + self.one_index] * div_arr
+                temp_error[n_half_p1_to_n_half_addr] += self.bucket_distribution[
+                                                            (n_half_p1_to_n_half * 2) - 1 + self.one_index] * div_arr
                 return temp_error
 
             self.real_error = square_error(self.real_error)
@@ -172,10 +178,11 @@ class ProbabilityBuckets:
         self.factor = np.exp(self.log_factor)
 
         gc.collect()
-    def opt_compose_with(self, probability_buckets, after_squaring = False, threshold_factor = None):
-        assert(after_squaring == False and threshold_factor == None), "Function is being called in an unsupported way. We should fix this."
-        return self.compose_with(probability_buckets)
 
+    def opt_compose_with(self, probability_buckets, after_squaring=False, threshold_factor=None):
+        assert (
+                after_squaring == False and threshold_factor == None), "Function is being called in an unsupported way. We should fix this."
+        return self.compose_with(probability_buckets)
 
     def compose_with(self, pb, allow_modify_instance=False):
         self.logger.info("Composing")
@@ -204,7 +211,8 @@ class ProbabilityBuckets:
         #         resulting from (A, A_infty, A_dist).(B, B_infty, B_dist) .
 
         # add "A_dist + B_dist - A_dist * B_dist"
-        self.distinguishing_events = self.distinguishing_events + pb.distinguishing_events - (self.distinguishing_events * pb.distinguishing_events)
+        self.distinguishing_events = self.distinguishing_events + pb.distinguishing_events - (
+                self.distinguishing_events * pb.distinguishing_events)
         # "A_infty + B_infty - A_infty * B_infty - A_infty*B_dist - A_dist*B_infty"
         temp_infty_bucket = np.float64(0)
         temp_infty_bucket += self.infty_bucket + pb.infty_bucket - (self.infty_bucket * pb.infty_bucket)
@@ -217,10 +225,11 @@ class ProbabilityBuckets:
 
             # calculate (A.B)_over
             self.logger.info("   Compute (A.B)_over")
-            temp_over = self.convolve_full(self.bucket_distribution[self.one_index+1:], pb.bucket_distribution[self.one_index+1:])
+            temp_over = self.convolve_full(self.bucket_distribution[self.one_index + 1:],
+                                           pb.bucket_distribution[self.one_index + 1:])
 
             # add all infty parts together: "(A.B)_over + A_infty + B_infty - A_infty * B_infty"
-            delta_infty_bucket = np.sum(temp_over[self.one_index-1:]) + temp_infty_bucket
+            delta_infty_bucket = np.sum(temp_over[self.one_index - 1:]) + temp_infty_bucket
 
             max_growth_allowed = self.squaring_threshold_factor * (self.infty_bucket + pb.infty_bucket)
             if delta_infty_bucket >= self.free_infty_budget and delta_infty_bucket > max_growth_allowed:
@@ -239,15 +248,16 @@ class ProbabilityBuckets:
 
         # compute the first bucket (A.B)_under
         self.logger.info("   Compute (A.B)_under")
-        temp_under = self.convolve_full(self.bucket_distribution[0:self.one_index+1], pb.bucket_distribution[0:pb.one_index+1])
-        temp_under = np.sum(temp_under[0:self.one_index+1])
-        temp_bucket_distribution[0] = max(0,temp_under)
+        temp_under = self.convolve_full(self.bucket_distribution[0:self.one_index + 1],
+                                        pb.bucket_distribution[0:pb.one_index + 1])
+        temp_under = np.sum(temp_under[0:self.one_index + 1])
+        temp_bucket_distribution[0] = max(0, temp_under)
 
         if self.error_correction:
             assert pb.error_correction
             convert_to_B = lambda distribution, factors: distribution / factors
             # factors = self.factor ** np.arange(-self.one_index, self.one_index + 1 )  # how numerically stable is that?
-            factors = np.exp(self.log_factor * np.arange(-self.one_index, self.one_index + 1 ) )
+            factors = np.exp(self.log_factor * np.arange(-self.one_index, self.one_index + 1))
 
             temp_buck_distr_B_self = convert_to_B(self.bucket_distribution, factors)
             temp_buck_distr_B_pb = convert_to_B(pb.bucket_distribution, factors)
@@ -258,17 +268,20 @@ class ProbabilityBuckets:
             # We compute the latter one because it involves only one convolution and the substraction term we already know
 
             self.logger.info("   Compute real_error A.B")
-            self.real_error = self.convolve_same(temp_buck_distr_B_self + self.real_error, temp_buck_distr_B_pb + pb.real_error) - temp_buck_distr_B_convolved
+            self.real_error = self.convolve_same(temp_buck_distr_B_self + self.real_error,
+                                                 temp_buck_distr_B_pb + pb.real_error) - temp_buck_distr_B_convolved
             self.real_error[0] = 0
 
             self.logger.info("   Compute virtual_error A.B")
             temp_buck_distr_B_virt_err_self = temp_buck_distr_B_self + self.virtual_error
             temp_buck_distr_B_virt_err_pb = temp_buck_distr_B_pb + pb.virtual_error
-            temp_virtual_error = self.convolve_same(temp_buck_distr_B_virt_err_self, temp_buck_distr_B_virt_err_pb) - temp_buck_distr_B_convolved
+            temp_virtual_error = self.convolve_same(temp_buck_distr_B_virt_err_self,
+                                                    temp_buck_distr_B_virt_err_pb) - temp_buck_distr_B_convolved
 
             self.logger.info("   Compute virtual_error A.B_under")
-            temp_virtual_error_under = self.convolve_full(temp_buck_distr_B_virt_err_self[0:self.one_index+1], temp_buck_distr_B_virt_err_pb[0:pb.one_index+1])
-            temp_virtual_error_under = np.sum(temp_virtual_error_under[0:self.one_index+1])
+            temp_virtual_error_under = self.convolve_full(temp_buck_distr_B_virt_err_self[0:self.one_index + 1],
+                                                          temp_buck_distr_B_virt_err_pb[0:pb.one_index + 1])
+            temp_virtual_error_under = np.sum(temp_virtual_error_under[0:self.one_index + 1])
             temp_virtual_error[0] = max(0, temp_virtual_error_under)
 
             self.virtual_error = temp_virtual_error
@@ -297,13 +310,14 @@ class ProbabilityBuckets:
     @classmethod
     def load_state(cls, state_directory):
 
-        params = pickle.load(open(os.path.join(state_directory, "non_ndarray"),'rb'))
+        params = pickle.load(open(os.path.join(state_directory, "non_ndarray"), 'rb'))
 
         instance = cls(lazy_init=True, logging_level=params['logging_level'])
 
         instance.__dict__.update(params)
 
-        instance.bucket_distribution = np.fromfile(os.path.join(state_directory, "bucket_distribution"), dtype=np.float64)
+        instance.bucket_distribution = np.fromfile(os.path.join(state_directory, "bucket_distribution"),
+                                                   dtype=np.float64)
         if instance.error_correction:
             instance.real_error = np.fromfile(os.path.join(state_directory, "real_error"), dtype=np.float64)
             instance.virtual_error = np.fromfile(os.path.join(state_directory, "virtual_error"), dtype=np.float64)
@@ -321,7 +335,7 @@ class ProbabilityBuckets:
             if key not in excluded_attributes:
                 save_dict[key] = self.__dict__[key]
 
-        pickle.dump(save_dict, open(os.path.join(state_directory, "non_ndarray"),'wb'))
+        pickle.dump(save_dict, open(os.path.join(state_directory, "non_ndarray"), 'wb'))
 
         self.bucket_distribution.tofile(open(os.path.join(state_directory, "bucket_distribution"), 'w'))
         if self.error_correction:
@@ -334,7 +348,7 @@ class ProbabilityBuckets:
             return None
 
         state_filepath_base = os.path.join(self.caching_directory, "compositions-")
-        get_state_filepath = lambda needed_exp: state_filepath_base + str(int(2**needed_exp))
+        get_state_filepath = lambda needed_exp: state_filepath_base + str(int(2 ** needed_exp))
         target_state_filepath = state_filepath_base + str(nr_of_compositions)
 
         if os.path.isdir(target_state_filepath):
@@ -342,8 +356,8 @@ class ProbabilityBuckets:
             return self.load_state(target_state_filepath)
 
         # wich compositions do we need
-        target_exp = int( np.log2(nr_of_compositions) )
-        needed_compositions = [ x if (nr_of_compositions & (2**x) != 0) else -1 for x in range(target_exp + 1)]
+        target_exp = int(np.log2(nr_of_compositions))
+        needed_compositions = [x if (nr_of_compositions & (2 ** x) != 0) else -1 for x in range(target_exp + 1)]
         needed_compositions = list([a for a in needed_compositions if a != -1])
 
         self.logger.info("Needed compositions: " + ", ".join(map(str, needed_compositions)))
@@ -371,7 +385,7 @@ class ProbabilityBuckets:
                 avoided_self_composition = True
         self.logger.info("[*] All intermediate states up to 2**" + str(target_exp) + " exist now")
 
-        previous_state = self.load_state( get_state_filepath(needed_compositions[0]) )
+        previous_state = self.load_state(get_state_filepath(needed_compositions[0]))
         self.logger.info("[*] Loaded state 2**" + str(needed_compositions[0]))
 
         # compose to the desired state
@@ -379,8 +393,9 @@ class ProbabilityBuckets:
             self.logger.info("[*] Compose with state 2**{}".format(i))
             current_state = self.load_state(get_state_filepath(i))
             # while the factor of previous state and current state is not same
-            while(current_state.factor != previous_state.factor):
-                self.logger.info("factors are unequal ( {} != {} ), squaring".format(current_state.factor, previous_state.factor))
+            while (current_state.factor != previous_state.factor):
+                self.logger.info(
+                    "factors are unequal ( {} != {} ), squaring".format(current_state.factor, previous_state.factor))
                 if current_state.factor > previous_state.factor:
                     previous_state.squaring()
                 else:
@@ -395,59 +410,61 @@ class ProbabilityBuckets:
     def print_state(self):
         """ prints some information about the current state """
         sum_of_bucket_distr = np.sum(self.bucket_distribution)
-        summary = (     'Summary:\n'
-                        '   caching_directoy   : {}\n'
-                        '   number_of_buckets  : {}\n'
-                        '   factor             : {}\n'
-                        '   infty_bucket       : {}\n'
-                        '   disting_events     : {}\n'
-                        '   minus-n-bucket     : {}\n'
-                        '   sum bucket_distr   : {:.30f}\n'
-                        '   sum of all buckets : {:.30f}\n'
-                        '   delta_upper(eps=0) : {}'
-                        .format(
-                            self.caching_directory,
-                            self.number_of_buckets,
-                            self.factor,
-                            self.infty_bucket,
-                            self.distinguishing_events,
-                            self.bucket_distribution[0],
-                            sum_of_bucket_distr,
-                            sum_of_bucket_distr + self.infty_bucket + self.distinguishing_events,
-                            self.delta_of_eps_upper_bound(0),
-                        ))
+        summary = ('Summary:\n'
+                   '   caching_directoy   : {}\n'
+                   '   number_of_buckets  : {}\n'
+                   '   factor             : {}\n'
+                   '   infty_bucket       : {}\n'
+                   '   disting_events     : {}\n'
+                   '   minus-n-bucket     : {}\n'
+                   '   sum bucket_distr   : {:.30f}\n'
+                   '   sum of all buckets : {:.30f}\n'
+                   '   delta_upper(eps=0) : {}'
+            .format(
+            self.caching_directory,
+            self.number_of_buckets,
+            self.factor,
+            self.infty_bucket,
+            self.distinguishing_events,
+            self.bucket_distribution[0],
+            sum_of_bucket_distr,
+            sum_of_bucket_distr + self.infty_bucket + self.distinguishing_events,
+            self.delta_of_eps_upper_bound(0),
+        ))
         if self.error_correction:
             summary += ('\n'
                         '   delta_lower(eps=0) : {}\n'
                         '   sum(virtual_error) : {}\n'
                         '   sum(real_error)    : {}\n'
                         '   the u              : {}'
-                        .format(
-                            self.delta_of_eps_lower_bound(0),
-                            np.sum(self.virtual_error),
-                            np.sum(self.real_error),
-                            self.u,
-                        ))
+                .format(
+                self.delta_of_eps_lower_bound(0),
+                np.sum(self.virtual_error),
+                np.sum(self.real_error),
+                self.u,
+            ))
 
         self.logger.info(summary)
 
     def convolve_same(self, x, y):
-        return np.convolve(x, y, mode = 'same')
+        return np.convolve(x, y, mode='same')
 
     def convolve_full(self, x, y):
-        return np.convolve(x, y, mode = 'full')
+        return np.convolve(x, y, mode='full')
 
     def _g_func(self, l):
-        return (1 - self.factor**-l)
+        return (1 - self.factor ** -l)
+
     def delta_of_eps(self, eps):
         return self.delta_of_eps_upper_bound(eps)
 
     def delta_of_eps_upper_bound(self, eps):
         # Use np.floor to guarantee an upper bound for the delta(eps) graph
         k = int(np.floor(eps / self.log_factor))
-        ret = np.sum(self._g_func(np.arange(1, self.one_index - k + 1)) * self.bucket_distribution[self.one_index + k + 1:])
+        ret = np.sum(
+            self._g_func(np.arange(1, self.one_index - k + 1)) * self.bucket_distribution[self.one_index + k + 1:])
         if self.error_correction:
-            ret -= np.exp(eps) * np.sum( self.real_error[ min(self.one_index + k + self.u, self.number_of_buckets): ] )
+            ret -= np.exp(eps) * np.sum(self.real_error[min(self.one_index + k + self.u, self.number_of_buckets):])
 
         # check:
         # a = np.sum(self._g_func(np.arange( self.one_index - k)) * self.bucket_distribution[self.one_index + k + 1:][self.u-1:])
@@ -470,7 +487,7 @@ class ProbabilityBuckets:
     # needed for pickle (and deepcopy)
     def __getstate__(self):
         d = self.__dict__.copy()  # copy the dict since we change it
-        del d['logger']              # remove logger instance entry
+        del d['logger']  # remove logger instance entry
         return d
 
     def __setstate__(self, dict):
@@ -499,3 +516,36 @@ class ProbabilityBuckets:
         """
         mid = len(arr) // 2
         return arr[:mid], arr[mid + 1:]
+
+
+class CustomBuckets(ProbabilityBuckets):
+    def __init__(self,
+                 number_of_buckets=100000,
+                 factor=None,
+                 dist1_array=None,
+                 dist2_array=None,
+                 caching_directory=None,
+                 free_infty_budget=10 ** (-20),
+                 logging_level=logging.INFO,
+                 error_correction=True,
+                 lazy_init=False,
+                 skip_buckets=False,
+                 bucket_distribution=None,
+                 infty_bucket=0,
+                 distinguishing_events=0,
+                 **kwargs):
+
+        # Manually set bucket distribution
+        self.logger.info("Setting bucket distribution")
+        self.bucket_distribution = bucket_distribution
+        self.infty_bucket = infty_bucket
+        self.distinguishing_events = distinguishing_events
+        self.one_index = int(self.number_of_buckets // 2)
+        self.u = np.int64(1)
+
+        # Call super class without error corrections or buckets
+        lazy_init = False
+        skip_buckets = True
+        error_correction = False
+        super().__init__(number_of_buckets, factor, None, None, caching_directory, free_infty_budget, logging_level,
+                         error_correction, lazy_init, skip_buckets)
