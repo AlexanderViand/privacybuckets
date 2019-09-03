@@ -29,17 +29,45 @@ def binomial_noise(events, n, offset=1):
     #binomial_b = binomial_b / np.sum(binomial_b)
     return binomial_a, binomial_b
 
+# Buckets for binomial noise
+def binomial_buckets(n, factor, number_of_buckets): #offset=1 for now
+    #non-distinguishing events
+    l_ab = np.zeros(n+2)
+    for k in range(1, n):
+        l_ab[k] = np.log(( n - k + 1) / k)
+    # for 0 it's infinity
+    # for n+1 it's 0
+    log_factor = np.log(factor, dtype=np.float64)
+    indices = l_ab / log_factor + number_of_buckets // 2
+    indices = np.ceil(indices).astype(int)
 
-# Gaussian noise, truncated
-def gaussian_noise(events, scale, offset=1):
-    gauss_a = norm.pdf(events, scale=scale)
-    gauss_a /= np.sum(gauss_a)
+    # # fill buckets
+    # self.infty_bucket = np.float64(0.0)
+    # self.distinguishing_events = np.float64(0.0)
+    # for i, m_infty, m_null, a, err in zip(indices, infty_mask, null_mask, distr1, errors):
+    #     if
+    # m_infty:
+    # self.distinguishing_events += a
+    # # self.infty_bucket += a
+    # continue
+    # if m_null:
+    #     continue
+    # # i = int(np.ceil(i))
+    # if i >= self.number_of_buckets:
+    #     self.infty_bucket += a
+    #     continue
+    # if i < 0:
+    #     self.bucket_distribution[0] += a
+    #     virtual_error[0] += err
+    #     continue
+    # self.bucket_distribution[i] += a
+    # virtual_error[i] += err
 
-    events_b = list(map(lambda x: x - offset, events))
-    gauss_b = norm.pdf(events_b, scale=scale)
-    gauss_b /= np.sum(gauss_b)
 
-    return gauss_a, gauss_b
+    # self.one_index = int(self.number_of_buckets // 2)
+    # self.u = np.int64(1)
+
+
 
 
 # Run Privacy Buckets
@@ -81,21 +109,6 @@ def plot(events, curves, labels, title='', xlabel='', ylabel='', xlim=None, ylim
     plt.show()
 
 
-def plot_multiple(events_and_curve, labels, title='', xlabel='', ylabel='', xlim=None, ylim=None):
-    mpl.rcParams['figure.dpi'] = 300
-    for p, l in zip(events_and_curve, labels):
-        plt.plot(p, label=l)
-        plt.title(title)
-        plt.xlabel(xlabel)
-        plt.ylabel(ylabel)
-        if xlim is not None:
-            plt.xlim(xlim)
-        if ylim is not None:
-            plt.ylim(ylim)
-        plt.legend()
-        plt.show()
-
-
 def main():
     # Parameters
     scale = 150
@@ -107,19 +120,11 @@ def main():
     events = np.arange(-truncation_at, truncation_at + 1, 1)
 
     # Define distributions
-    gauss_a, gauss_b = gaussian_noise(events, scale, offset=offset)
     bin_a, bin_b = binomial_noise(events, n, offset=offset)
-    bin2_a, bin2_b = binomial_noise(events, n / 4, offset=offset)
-    bin3_a, bin3_b = binomial_noise(events, n / 9, offset=offset)
-    bin4_a, bin4_b = binomial_noise(events, n / 16, offset=offset)
 
-    # Show input distributions
-    input_curves = (gauss_a, gauss_b, bin_a, bin_b, bin2_a, bin2_b, bin3_a, bin3_b, bin4_a, bin4_b)
-    input_labels = (
-        'Gauss A', 'Gauss B', 'Binomial (n={}) A'.format(n), 'Binomial (n={}) B'.format(n),
-        'Binomial (n={}) A'.format(n / 4), 'Binomial (n={}) B'.format(n / 4), 'Binomial (n={}) A'.format(n / 9),
-        'Binomial (n={}) B'.format(n / 9), 'Binomial (n={}) A'.format(n / 16), 'Binomial (n={}) B'.format(n / 16)
-    )
+    # Show input distribution
+    input_curves = (bin_a, bin_b)
+    input_labels = ('Binomial (n={}) A'.format(n), 'Binomial (n={}) B'.format(n))
     plot(events, input_curves, input_labels, title="Input distributions", xlabel="Noise", ylabel="mass")
 
     # Show input distributions restricted to interesting part
@@ -127,51 +132,23 @@ def main():
          xlim=(-2 * scale, 2 * scale))
 
     # Run Privacy Buckets
-    composed_gauss = compose(gauss_a, gauss_b, compositions=compositions)
     composed_bin = compose(bin_a, bin_b, compositions=compositions)
-    composed_bin2 = compose(bin2_a, bin2_b, compositions=compositions)
-    composed_bin3 = compose(bin3_a, bin3_b, compositions=compositions)
-    composed_bin4 = compose(bin4_a, bin4_b, compositions=compositions)
+
 
     # abusing internals, we can look at the bucket distribution
-    composed_curves = (
-
-        composed_gauss.bucket_distribution, composed_bin.bucket_distribution, composed_bin2.bucket_distribution,
-        composed_bin3.bucket_distribution, composed_bin4.bucket_distribution)
-    composed_labels = (
-        'bucket distribution Gauss (sigma={})'.format(scale), 'bucket distribution Binomial (n={})'.format(n),
-        'bucket distribution Binomial (n={})'.format(n / 4), 'bucket distribution Binomial (n={})'.format(n / 9),
-        'bucket distribution Binomial (n={})'.format(n / 16)
-    )
-    plot_multiple(composed_curves, composed_labels, "Bucket Distributions", "bucket number", "mass")
+    plot(composed_bin.bucket_distribution, 'bucket distribution Binomial (n={})'.format(n), "Bucket Distributions", "bucket number", "mass")
 
     # Now we build the delta(eps) graphs from the computed distribution
-    upper_bound_gauss = [composed_gauss.delta_of_eps_upper_bound(eps) for eps in eps_vector]
-    lower_bound_gauss = [composed_gauss.delta_of_eps_lower_bound(eps) for eps in eps_vector]
     upper_bound_bin = [composed_bin.delta_of_eps_upper_bound(eps) for eps in eps_vector]
-    lower_bound_bin = [composed_bin.delta_of_eps_lower_bound(eps) for eps in eps_vector]
-    upper_bound_bin2 = [composed_bin2.delta_of_eps_upper_bound(eps) for eps in eps_vector]
-    lower_bound_bin2 = [composed_bin2.delta_of_eps_lower_bound(eps) for eps in eps_vector]
-    upper_bound_bin3 = [composed_bin3.delta_of_eps_upper_bound(eps) for eps in eps_vector]
-    lower_bound_bin3 = [composed_bin3.delta_of_eps_lower_bound(eps) for eps in eps_vector]
-    upper_bound_bin4 = [composed_bin4.delta_of_eps_upper_bound(eps) for eps in eps_vector]
-    lower_bound_bin4 = [composed_bin4.delta_of_eps_lower_bound(eps) for eps in eps_vector]
+    # lower_bound_bin = [composed_bin.delta_of_eps_lower_bound(eps) for eps in eps_vector]
 
-    # Show all curves
-    delta_eps_curves = (
-        upper_bound_gauss, lower_bound_gauss, upper_bound_bin, lower_bound_bin, upper_bound_bin2, lower_bound_bin2,
-        upper_bound_bin3, lower_bound_bin3, upper_bound_bin4, lower_bound_bin4
-    )
-    labels = ('Gauss (sigma = {}) upper'.format(scale), 'Gauss (sigma = {}) lower'.format(scale),
-              'Binomial (n={}) upper'.format(n), 'Binomial (n={}) lower'.format(n),
-              'Binomial (n={}) upper'.format(n / 4), 'Binomial (n={}) lower'.format(n / 4),
-              'Binomial (n={}) upper'.format(n / 9), 'Binomial (n={}) lower'.format(n / 9),
-              'Binomial (n={}) upper'.format(n / 16), 'Binomial (n={}) lower'.format(n / 16))
-    plot(eps_vector, delta_eps_curves, labels, xlim=(0.5, 10.0), ylim=(0, 10 ** -5))
+
+    labels = ('Binomial (n={}) upper'.format(n))
+    plot(eps_vector, upper_bound_bin, labels, xlim=(0.5, 10.0), ylim=(0, 10 ** -5))
 
     # Save to csv so we can do the plotting separately
-    np.savetxt("delta-eps.csv",
-               np.transpose([eps_vector, upper_bound_gauss, upper_bound_bin2, upper_bound_bin3, upper_bound_bin4]),
+    np.savetxt("delta-eps-custom-buckets.csv",
+               np.transpose([eps_vector, upper_bound_bin]),
                delimiter=',')
 
 
